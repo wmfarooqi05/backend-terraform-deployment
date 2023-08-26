@@ -66,7 +66,7 @@ resource "aws_db_proxy" "global_employment_proxy" {
 
   auth {
     auth_scheme = "SECRETS"
-    description = "RDS Prxoy Test Authentication"
+    description = "RDS Proxy Test Authentication"
     secret_arn  = "arn:aws:secretsmanager:us-east-1:524073432557:secret:proxy_test_secret-27cj4e"
     #aws_secretsmanager_secret_version.secret_credentials.arn
 
