@@ -40,6 +40,7 @@ terraform.rc
 **/.localstack-aws/*
 
 # .tfstate files
+localstack-aws/.terraform/*
 localstack-aws/*.tfstate
 localstack-aws/*.tfstate.*
 
@@ -70,4 +71,5 @@ localstack-aws/*_override.tf.json
 # Ignore CLI configuration files
 localstack-aws/.terraformrc
 localstack-aws/terraform.rc
+localstack-aws/hashicorp
 localstack-aws/hashicorp

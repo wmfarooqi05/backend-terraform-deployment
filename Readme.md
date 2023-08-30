@@ -98,3 +98,5 @@ These are the resources which we are mainly using and they need to be setup by T
       - maybe invoke permission
       - Layers read/write/update permission
     
+# Elastic cache (Redis)
+  - This will be used for caching
