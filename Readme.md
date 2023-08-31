@@ -1,4 +1,4 @@
-# Global Employment Infrastructure Notes
+# Infrastructure Notes
 These are the resources which we are mainly using and they need to be setup by Terraform instead of Serverless
 
 ### Lambda Layers
