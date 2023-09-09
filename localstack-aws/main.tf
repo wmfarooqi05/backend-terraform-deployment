@@ -1,10 +1,10 @@
 
 locals {
-  region        = var.region
-  project       = var.project
-  environment   = var.environment
-  profile       = var.profile
-  ssh_user      = var.ssh_user
+  region      = var.region
+  project     = var.project
+  environment = var.environment
+  profile     = var.profile
+  ssh_user    = var.ssh_user
   # key_pair_name = var.key_pair_name
   # private_key_path = var.private_key_path
   subnets        = var.subnets
@@ -15,7 +15,6 @@ locals {
   public_subnets_cidr  = var.public_subnets_cidr
   private_subnets_cidr = var.private_subnets_cidr
   availability_zones   = var.availability_zones
-
 }
 
 provider "aws" {
@@ -37,6 +36,8 @@ provider "aws" {
     lambda = "http://localhost:4566"
     iam    = "http://localhost:4566"
     sqs    = "http://localhost:4566"
+    ses    = "http://localhost:4566"
+    sns    = "http://localhost:4566"
   }
 }
 
@@ -154,239 +155,68 @@ resource "aws_sqs_queue" "image_processing_dlq" {
 }
 
 
-/*==== The VPC ======*/
-resource "aws_vpc" "vpc" {
-  cidr_block           = local.vpc_cidr
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-  tags = {
-    Name        = "${local.project}-${local.environment}-vpc"
-    Environment = "${local.environment}"
-  }
+### Emails
+resource "aws_ses_domain_identity" "elwork_com" {
+  domain = "elywork.com" # Replace with your domain
 }
 
-/*==== Subnets ======*/
-/* Internet gateway for the public subnet */
-resource "aws_internet_gateway" "ig" {
-  vpc_id = aws_vpc.vpc.id
-  tags = {
-    Name        = "${local.project}-${local.environment}-igw"
-    Environment = "${local.environment}"
-  }
-}
-/* Elastic IP for NAT */
-resource "aws_eip" "nat_eip" {
-  vpc        = true
-  depends_on = [aws_internet_gateway.ig]
-}
-/* NAT */
-resource "aws_nat_gateway" "nat" {
-  allocation_id = aws_eip.nat_eip.id
-  subnet_id     = element(aws_subnet.public_subnet.*.id, 0)
-  depends_on    = [aws_internet_gateway.ig]
-  tags = {
-    Name        = "${local.project}-nat"
-    Environment = "${local.environment}"
-  }
-}
-/* Public subnet */
-resource "aws_subnet" "public_subnet" {
-  vpc_id                  = aws_vpc.vpc.id
-  count                   = length(var.public_subnets_cidr)
-  cidr_block              = element(var.public_subnets_cidr, count.index)
-  availability_zone       = element(var.availability_zones, count.index)
-  map_public_ip_on_launch = true
-  tags = {
-    Name        = "${local.project}-${local.environment}-${element(var.availability_zones, count.index)}-public-subnet"
-    Environment = "${local.environment}"
-  }
-}
-/* Private subnet */
-resource "aws_subnet" "private_subnet" {
-  vpc_id                  = aws_vpc.vpc.id
-  count                   = length(var.private_subnets_cidr)
-  cidr_block              = element(var.private_subnets_cidr, count.index)
-  availability_zone       = element(var.availability_zones, count.index)
-  map_public_ip_on_launch = false
-  tags = {
-    Name        = "${local.project}-${local.environment}-${element(var.availability_zones, count.index)}-private-subnet"
-    Environment = "${local.environment}"
-  }
-}
-/* Routing table for private subnet */
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.vpc.id
-  tags = {
-    Name        = "${local.project}-${local.environment}-private-route-table"
-    Environment = "${local.environment}"
-  }
-}
-/* Routing table for public subnet */
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.vpc.id
-  tags = {
-    Name        = "${local.project}-${local.environment}-public-route-table"
-    Environment = "${local.environment}"
-  }
-}
-resource "aws_route" "public_internet_gateway" {
-  route_table_id         = aws_route_table.public.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.ig.id
-}
-resource "aws_route" "private_nat_gateway" {
-  route_table_id         = aws_route_table.private.id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.nat.id
-}
-/* Route table associations */
-resource "aws_route_table_association" "public" {
-  count          = length(local.public_subnets_cidr)
-  subnet_id      = element(aws_subnet.public_subnet.*.id, count.index)
-  route_table_id = aws_route_table.public.id
-}
-resource "aws_route_table_association" "private" {
-  count          = length(local.private_subnets_cidr)
-  subnet_id      = element(aws_subnet.private_subnet.*.id, count.index)
-  route_table_id = aws_route_table.private.id
-}
-/*==== VPC's Default Security Group ======*/
-resource "aws_security_group" "default" {
-  name        = "${local.project}-${local.environment}-default-sg"
-  description = "Default security group to allow inbound/outbound from the VPC"
-  vpc_id      = aws_vpc.vpc.id
-  depends_on  = [aws_vpc.vpc]
-  ingress {
-    from_port = "0"
-    to_port   = "0"
-    protocol  = "-1"
-    self      = true
-  }
-
-  egress {
-    from_port = "0"
-    to_port   = "0"
-    protocol  = "-1"
-    self      = "true"
-  }
-  tags = {
-    Environment = "${local.environment}"
-  }
+resource "aws_ses_email_identity" "wmfarooqi05_gmail" {
+  email = "wmfarooqi05@gmail.com"
 }
 
+resource "aws_ses_email_identity" "wmfarooqi05_outlook" {
+  email = "wmfarooqi05@outlook.com"
+}
 
-# resource "aws_vpc" "my_vpc" {
-#   cidr_block = "10.0.0.0/16"
-#   # Add other VPC attributes from your vpc.json
-# }
+resource "aws_ses_email_identity" "wmfarooqi70_gmail" {
+  email = "wmfarooqi70@gmail.com"
+}
 
-# resource "aws_subnet" "subnet_a" {
-#   vpc_id            = aws_vpc.my_vpc.id
-#   cidr_block        = "10.0.1.0/24"
-#   availability_zone = "us-east-1a"
-#   # Add other subnet attributes from your subnets.json
-# }
+resource "aws_ses_email_identity" "hazyhassan888_gmail" {
+  email = "hazyhassan888@gmail.com"
+}
 
-# resource "aws_internet_gateway" "my_igw" {
-#   vpc_id = aws_vpc.my_vpc.id
-#   # Add other internet gateway attributes from your internet-gateway.json
-# }
+resource "aws_ses_email_identity" "dev_appedia_gmail" {
+  email = "dev.appedia@gmail.com"
+}
 
-# resource "aws_route_table" "public_rt" {
-#   vpc_id = aws_vpc.my_vpc.id
-#   # Add other route table attributes from your route-tables.json
-# }
+resource "aws_ses_email_identity" "admin_elywork_com" {
+  email = "admin@elywork.com"
+}
 
-# resource "aws_nat_gateway" "my_nat_gateway" {
-#   allocation_id = aws_eip.my_eip.id
-#   subnet_id     = aws_subnet.subnet_a.id
-#   # Add other NAT gateway attributes from your nat-gateway.json
-# }
-
-# resource "aws_vpc_peering_connection" "my_peering" {
-#   vpc_id        = aws_vpc.my_vpc.id
-#   peer_vpc_id   = var.peer_vpc_id
-#   # Add other peering connection attributes from your peering-connections.json
+# resource "aws_ses_configuration_set" "email_sns_config" {
+#   name = "email_sns_config" # Replace with your desired configuration set name
 # }
 
 
-# resource "aws_lambda_function" "script" {
-#   filename      = "script.zip"
-#   role          = aws_iam_role.lambda_role.arn
-#   function_name = "script"
-#   handler       = "script.script"
-#   runtime       = "python3.8"
+# resource "aws_sns_topic" "email-sns-topic" {
+#   name = "email-sns-topic"
 # }
 
-# resource "aws_dynamodb_table" "dynamodbtable" {
-#   name         = "terratable"
-#   billing_mode = "PAY_PER_REQUEST"
-#   hash_key     = "id"
-#   range_key    = "filename"
-#   attribute {
-#     name = "id"
-#     type = "S"
-#   }
-#   attribute {
-#     name = "filename"
-#     type = "S"
-#   }
-# }
+# resource "aws_ses_event_destination" "event_destination_set_to_email_sns_config" {
+#   name                   = "event_destination_set_to_email_sns_config"
+#   configuration_set_name = aws_ses_configuration_set.email_sns_config.name
+#   enabled                = true
 
-
-# resource "aws_s3_bucket_notification" "aws-lambda-trigger" {
-#   bucket = aws_s3_bucket.bucket.id
-#   lambda_function {
-#     lambda_function_arn = aws_lambda_function.script.arn
-#     events              = ["s3:ObjectCreated:*"]
-#   }
-#   depends_on = [aws_lambda_permission.test]
-# }
-
-
-# resource "aws_lambda_permission" "test" {
-#   statement_id  = "AllowExecutionFromS3Bucket"
-#   action        = "lambda:InvokeFunction"
-#   function_name = "script"
-#   principal     = "s3.amazonaws.com"
-#   source_arn    = "arn:aws:s3:::${aws_s3_bucket.bucket.id}"
-# }
-
-
-# resource "aws_iam_role" "lambda_role" {
-#   name = "lambda_role_name"
-
-#   assume_role_policy = <<EOF
-# {
-#   "Version": "2012-10-17",
-#   "Statement": [
-#     {
-#       "Effect": "Allow",
-#       "Principal": {
-#         "Service": "lambda.amazonaws.com"
-#       },
-#       "Action": "*"
-#     }
+#   matching_types = [
+#     "bounce",
+#     "click",
+#     "complaint",
+#     "delivery",
+#     # "deliveryDelay",
+#     "open",
+#     "reject",
+#     "renderingFailure",
+#     # "subscription",
 #   ]
-# }
-# EOF
+
+#   sns_destination {
+#     topic_arn = aws_sns_topic.email-sns-topic.arn
+#   }
 # }
 
-# resource "aws_iam_role_policy" "revoke_keys_role_policy" {
-#   name = "lambda_iam_policy_name"
-#   role = aws_iam_role.lambda_role.id
-
-#   policy = <<EOF
-# {
-#   "Version": "2012-10-17",
-#   "Statement": [
-#     {
-#       "Sid": "Stmt1687200984534",
-#       "Action": "*",
-#       "Effect": "Allow",
-#       "Resource": "*"
-#     }
-#   ]
-# }
-# EOF
+# resource "aws_ses_identity_notification_topic" "email-sns-notification-topic" {
+#   topic_arn                = aws_sns_topic.email-sns-topic.arn
+#   notification_type        = "Bounce"
+#   include_original_headers = true
 # }
