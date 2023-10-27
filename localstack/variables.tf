@@ -5,7 +5,7 @@ variable "region" {
 
 variable "project" {
   type    = string
-  default = "GlobalEmployment"
+  default = ""
 }
 
 variable "environment" {

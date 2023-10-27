@@ -184,14 +184,13 @@ resource "aws_ses_email_identity" "admin_elywork_com" {
   email = "admin@elywork.com"
 }
 
-# resource "aws_ses_configuration_set" "email_sns_config" {
-#   name = "email_sns_config" # Replace with your desired configuration set name
-# }
+resource "aws_ses_configuration_set" "email_sns_config" {
+  name = "email_sns_config" # Replace with your desired configuration set name
+}
 
-
-# resource "aws_sns_topic" "email-sns-topic" {
-#   name = "email-sns-topic"
-# }
+resource "aws_sns_topic" "email-sns-topic" {
+  name = "email-sns-topic"
+}
 
 # resource "aws_ses_event_destination" "event_destination_set_to_email_sns_config" {
 #   name                   = "event_destination_set_to_email_sns_config"
